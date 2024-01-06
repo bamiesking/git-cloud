@@ -26,7 +26,11 @@ func main() {
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		cF := parser.ParseLine(scanner.Text())
+		cF, err := parser.ParseLine(scanner.Text())
+		if err != nil {
+			log.Print(err)
+			continue
+		}
 		fmt.Println(cF)
 		file := cF.FetchFile()
 		fmt.Println(file)

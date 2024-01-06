@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
 	"time"
@@ -40,13 +41,12 @@ type CloudFileInfo struct {
 	dateModified time.Time
 }
 
-func ParseService(identifier string) Service {
+func ParseService(identifier string) (Service, error) {
 	switch identifier {
 	case "gdrive":
-		return GDrive
+		return GDrive, nil
 	}
-	log.Printf("Unrecognised Service identifier: %s", identifier)
-	return Undefined
+	return Undefined, errors.New("Unrecognised cloud service identifier")
 }
 
 func (s Service) String() string {
