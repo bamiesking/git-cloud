@@ -2,34 +2,36 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"log"
 	"os"
 	"path"
 
+	commands "github.com/bamiesking/git-cloud/commands"
 	parser "github.com/bamiesking/git-cloud/parser"
 	utils "github.com/bamiesking/git-cloud/utils"
 )
 
 func main() {
+	// Verify that we are in a git repo
 	gitPath, err := utils.GitRepoPath()
 	if err != nil {
 		log.Fatal(err)
-		os.Exit(1)
 	}
+
+	// Open/create .gitcloud file
 	file, err := os.Open(path.Join(gitPath, ".gitcloud"))
 	if err != nil {
 		log.Fatal(err)
-		os.Exit(1)
 	}
 	defer file.Close()
 
+	// Make caching directory
 	err = os.MkdirAll(path.Join(gitPath, ".git/cloud/cache"), os.ModePerm)
 	if err != nil {
 		log.Fatal(err)
-		os.Exit(1)
 	}
 
+	// Read in the entries in .gitcloud
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		cF, err := parser.ParseLine(scanner.Text())
@@ -37,9 +39,7 @@ func main() {
 			log.Print(err)
 			continue
 		}
-		fmt.Println(cF)
-		file := cF.FetchFile()
-		fmt.Println(file)
+		commands.Fetch(cF)
 	}
 
 	if err := scanner.Err(); err != nil {
