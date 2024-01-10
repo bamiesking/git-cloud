@@ -24,6 +24,12 @@ func main() {
 	}
 	defer file.Close()
 
+	err = os.MkdirAll(path.Join(gitPath, ".git/cloud/cache"), os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		cF, err := parser.ParseLine(scanner.Text())
