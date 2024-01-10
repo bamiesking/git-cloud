@@ -71,3 +71,56 @@ func saveToken(path string, token *oauth2.Token) {
 	defer f.Close()
 	json.NewEncoder(f).Encode(token)
 }
+
+func FetchGDrive(handle string) structs.CloudFileInfo {
+	ctx := context.Background()
+	b, err := os.ReadFile("credentials.json")
+	if err != nil {
+		log.Fatalf("Unable to read client secret file: %v", err)
+	}
+
+	// If modifying these scopes, delete your previously saved token.json.
+	// TODO: reduce this scope to individual files
+	config, err := google.ConfigFromJSON(b, drive.DriveScope)
+	if err != nil {
+		log.Fatalf("Unable to parse client secret file to config: %v", err)
+	}
+	client := getClient(config)
+
+	srv, err := drive.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		log.Fatalf("Unable to retrieve Drive client: %v", err)
+	}
+
+	r, err := srv.Files.Get(handle).Fields(googleapi.Field("name,size,modifiedTime")).Do()
+	if err != nil {
+		log.Print(err)
+	}
+	file, err := srv.Files.Get(handle).Download()
+	if err != nil {
+		log.Print(err)
+	}
+	gitPath, err := utils.GitRepoPath()
+	if err != nil {
+		log.Fatal(err)
+	}
+	cache, err := os.Create(path.Join(gitPath, ".git/cloud/cache", handle))
+	cacheWriter := io.Writer(cache)
+	_, err = io.Copy(cacheWriter, file.Body)
+	if err != nil {
+		log.Print(err)
+	}
+	defer file.Body.Close()
+	info := structs.CloudFileInfo{}
+	if r != nil {
+		info.Name = r.Name
+		info.Size = r.Size
+		t, err := time.Parse(time.RFC3339, r.ModifiedTime)
+		if err != nil {
+			log.Printf("Failed to parse ModifiedTime for file %s (%s)", r.Name, handle)
+			return info
+		}
+		info.DateModified = t
+	}
+	return info
+}

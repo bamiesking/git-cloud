@@ -3,11 +3,15 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"log"
 	"os"
+	"path"
 	"time"
 
 	gdrive "github.com/bamiesking/git-cloud/service/gdrive"
+	"github.com/bamiesking/git-cloud/utils"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/googleapi"
@@ -66,7 +70,8 @@ func fetchGDriveFile(handle string) CloudFileInfo {
 	}
 
 	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, drive.DriveMetadataReadonlyScope)
+	// TODO: reduce this scope to individual files
+	config, err := google.ConfigFromJSON(b, drive.DriveFileScope)
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
@@ -78,6 +83,24 @@ func fetchGDriveFile(handle string) CloudFileInfo {
 	}
 
 	r, err := srv.Files.Get(handle).Fields(googleapi.Field("name,size,modifiedTime")).Do()
+	if err != nil {
+		log.Print(err)
+	}
+	file, err := srv.Files.Get(handle).Download()
+	if err != nil {
+		log.Print(err)
+	}
+	gitPath, err := utils.GitRepoPath()
+	if err != nil {
+		log.Fatal(err)
+	}
+	cache, err := os.Create(path.Join(gitPath, ".git/cloud/cache", handle))
+	cacheWriter := io.Writer(cache)
+	_, err = io.Copy(cacheWriter, file.Body)
+	if err != nil {
+		log.Print(err)
+	}
+	defer file.Body.Close()
 	info := CloudFileInfo{}
 	if r != nil {
 		info.name = r.Name
