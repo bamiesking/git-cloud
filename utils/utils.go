@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"os/exec"
 	"runtime"
 )
@@ -48,13 +47,16 @@ func GitRepoPath() (string, error) {
 	return string(path), nil
 }
 
-type generator func(http.ResponseWriter, *http.Request, chan<- string)
-type handler func(http.ResponseWriter, *http.Request)
+type (
+	generator func(http.ResponseWriter, *http.Request, chan<- string)
+	handler   func(http.ResponseWriter, *http.Request)
+)
 
 func OAuthHandlerGenerator(w http.ResponseWriter, r *http.Request, t chan<- string) {
 	code := r.URL.Query().Get("code")
 	fmt.Println(code)
 	t <- code
+	w.Write([]byte("You can now close this tab"))
 }
 
 func GenerateHandler(g generator, t chan<- string) handler {
@@ -65,14 +67,15 @@ func GenerateHandler(g generator, t chan<- string) handler {
 
 func AwaitOAuthRedirect(g generator, port chan<- int, t chan string) {
 	listener, err := net.Listen("tcp", ":0")
-	if err != nil {
-		log.Fatal(err)
-		fmt.Println("An error occurred when trying to create TCP listener to receive OAuth callback")
-		os.Exit(1)
-	}
+	Handle(err)
 	port <- listener.Addr().(*net.TCPAddr).Port
 	h := GenerateHandler(g, t)
 	http.HandleFunc("/", h)
-	fmt.Println("serving")
 	http.Serve(listener, nil)
+}
+
+func Handle(e error) {
+	if e != nil {
+		log.Fatal(e)
+	}
 }

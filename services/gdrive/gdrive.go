@@ -72,7 +72,6 @@ func tokenFromFile(file string) (*oauth2.Token, error) {
 
 // Saves a token to a file path.
 func saveToken(path string, token *oauth2.Token) {
-	fmt.Printf("Saving credential file to: %s\n", path)
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		log.Fatalf("Unable to cache oauth token: %v", err)
@@ -102,23 +101,21 @@ func FetchGDrive(handle string) structs.CloudFileInfo {
 	}
 
 	r, err := srv.Files.Get(handle).Fields(googleapi.Field("name,size,modifiedTime")).Do()
-	if err != nil {
-		log.Print(err)
-	}
+	utils.Handle(err)
+
 	file, err := srv.Files.Get(handle).Download()
-	if err != nil {
-		log.Print(err)
-	}
+	utils.Handle(err)
+
 	gitPath, err := utils.GitRepoPath()
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.Handle(err)
+
 	cache, err := os.Create(path.Join(gitPath, ".git/cloud/cache", handle))
+
+	utils.Handle(err)
 	cacheWriter := io.Writer(cache)
 	_, err = io.Copy(cacheWriter, file.Body)
-	if err != nil {
-		log.Print(err)
-	}
+	utils.Handle(err)
+
 	defer file.Body.Close()
 	info := structs.CloudFileInfo{}
 	if r != nil {

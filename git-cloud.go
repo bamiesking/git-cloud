@@ -14,21 +14,16 @@ import (
 func main() {
 	// Verify that we are in a git repo
 	gitPath, err := utils.GitRepoPath()
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.Handle(err)
 
 	// Open/create .gitcloud file
 	file, err := os.Open(path.Join(gitPath, ".gitcloud"))
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.Handle(err)
 	defer file.Close()
 
 	// Make caching directory
 	err = os.MkdirAll(path.Join(gitPath, ".git/cloud/cache"), os.ModePerm)
-	if err != nil {
-		log.Fatal(err)
+	utils.Handle(err)
 	}
 
 	// Read in the entries in .gitcloud
@@ -42,7 +37,6 @@ func main() {
 		commands.Fetch(cF)
 	}
 
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
+	err = scanner.Err()
+	utils.Handle(err)
 }

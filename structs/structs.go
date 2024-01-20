@@ -14,13 +14,14 @@ const (
 
 type CloudFile struct {
 	Path    string
-	Service Service
 	Handle  string
+	Service Service
 }
+
 type CloudFileInfo struct {
+	DateModified time.Time
 	Name         string
 	Size         int64
-	DateModified time.Time
 }
 
 func ParseService(identifier string) (Service, error) {
@@ -28,7 +29,7 @@ func ParseService(identifier string) (Service, error) {
 	case "gdrive":
 		return GDrive, nil
 	}
-	return Undefined, errors.New("Unrecognised cloud service identifier")
+	return Undefined, errors.New("unrecognised cloud service identifier")
 }
 
 func (s Service) String() string {

@@ -2,7 +2,7 @@ package commands
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"io"
 	"log"
 	"os"
@@ -27,50 +27,81 @@ func Pull(cF structs.CloudFile) {
 	treeBuffer := make([]byte, chunkSize)
 	Fetch(cF)
 	gitPath, err := utils.GitRepoPath()
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.Handle(err)
 	treePath := path.Join(gitPath, cF.Path)
 	cachePath := path.Join(gitPath, ".git/cloud/cache", cF.Handle)
 	err = os.MkdirAll(path.Dir(treePath), os.ModeDir)
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.Handle(err)
 	treeFile, err := os.OpenFile(treePath, os.O_CREATE|os.O_RDWR, os.ModePerm)
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.Handle(err)
 	cacheFile, err := os.OpenFile(cachePath, os.O_RDONLY, os.ModeExclusive)
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.Handle(err)
 	treeReadWriteSeeker := io.ReadWriteSeeker(treeFile)
 	cacheReadSeeker := io.ReadSeeker(cacheFile)
 	pos, err := compareFiles(cacheReadSeeker, cacheBuffer, treeReadWriteSeeker, treeBuffer)
-	fmt.Printf("Pos: %d\n", pos)
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.Handle(err)
 	if pos >= 0 {
 		pos, err = cacheReadSeeker.Seek(-1*chunkSize, io.SeekCurrent)
-		if err != nil {
-			log.Fatal(err)
-		}
+		utils.Handle(err)
 		_, err := treeReadWriteSeeker.Seek(pos, io.SeekStart)
-		if err != nil {
-			log.Fatal(err)
-		}
+		utils.Handle(err)
 		size, err := io.Copy(treeReadWriteSeeker, cacheReadSeeker)
-		if err != nil {
-			log.Fatal(err)
-		}
+		utils.Handle(err)
 		fileStat, err := cacheFile.Stat()
-		if err != nil {
-			log.Fatal(err)
-		}
+		utils.Handle(err)
 		if pos+size != fileStat.Size() {
 			log.Fatal("Tree file and cache file are not the same size.")
 		}
+	}
+}
+
+type DiffType int
+
+const (
+	Identical DiffType = iota
+	Modified
+	Added
+	Deleted
+)
+
+func Diff(cF structs.CloudFile) DiffType {
+	gitPath, err := utils.GitRepoPath()
+	utils.Handle(err)
+	treePath := path.Join(gitPath, cF.Path)
+	cachePath := path.Join(gitPath, ".git/cloud/cache", cF.Handle)
+	treeStat, err := os.Stat(treePath)
+	if errors.Is(err, os.ErrNotExist) {
+		return Deleted
+	} else {
+		utils.Handle(err)
+	}
+	cacheStat, err := os.Stat(cachePath)
+	if errors.Is(err, os.ErrNotExist) {
+		return Added
+	} else {
+		utils.Handle(err)
+	}
+	if treeStat.Size() != cacheStat.Size() {
+		return Modified
+	}
+	var chunkSize int64 = 4096
+	cacheBuffer := make([]byte, chunkSize)
+	treeBuffer := make([]byte, chunkSize)
+	Fetch(cF)
+	err = os.MkdirAll(path.Dir(treePath), os.ModeDir)
+	utils.Handle(err)
+	treeFile, err := os.OpenFile(treePath, os.O_CREATE|os.O_RDWR, os.ModePerm)
+	utils.Handle(err)
+	cacheFile, err := os.OpenFile(cachePath, os.O_RDONLY, os.ModeExclusive)
+	utils.Handle(err)
+	treeReader := io.Reader(treeFile)
+	cacheReader := io.ReadSeeker(cacheFile)
+	diff, err := compareFiles(cacheReader, cacheBuffer, treeReader, treeBuffer)
+	utils.Handle(err)
+	if diff >= 0 {
+		return Modified
+	} else {
+		return Identical
 	}
 }
 
