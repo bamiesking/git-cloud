@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"log"
 	"os"
 	"path"
@@ -24,6 +25,22 @@ func main() {
 	// Make caching directory
 	err = os.MkdirAll(path.Join(gitPath, ".git/cloud/cache"), os.ModePerm)
 	utils.Handle(err)
+
+	fetch := flag.NewFlagSet("fetch", flag.ExitOnError)
+	pull := flag.NewFlagSet("pull", flag.ExitOnError)
+	diff := flag.NewFlagSet("diff", flag.ExitOnError)
+
+	if len(os.Args) < 2 {
+		os.Exit(1)
+	}
+
+	switch os.Args[1] {
+	case "fetch":
+		fetch.Parse(os.Args[2:])
+	case "pull":
+		pull.Parse(os.Args[2:])
+	case "diff":
+		diff.Parse(os.Args[2:])
 	}
 
 	// Read in the entries in .gitcloud
