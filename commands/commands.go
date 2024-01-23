@@ -3,6 +3,7 @@ package commands
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -55,34 +56,31 @@ func Pull(cF structs.CloudFile) {
 	}
 }
 
-type DiffType int
-
-const (
-	Identical DiffType = iota
-	Modified
-	Added
-	Deleted
-)
-
-func Diff(cF structs.CloudFile) DiffType {
+func Diff(cF structs.CloudFile) {
 	gitPath, err := utils.GitRepoPath()
 	utils.Handle(err)
 	treePath := path.Join(gitPath, cF.Path)
 	cachePath := path.Join(gitPath, ".git/cloud/cache", cF.Handle)
 	treeStat, err := os.Stat(treePath)
 	if errors.Is(err, os.ErrNotExist) {
-		return Deleted
+		// Deleted file
+		fmt.Printf("- %s\n", cF.Path)
+		return
 	} else {
 		utils.Handle(err)
 	}
 	cacheStat, err := os.Stat(cachePath)
 	if errors.Is(err, os.ErrNotExist) {
-		return Added
+		// Added file
+		fmt.Printf("+ %s\n", cF.Path)
+		return
 	} else {
 		utils.Handle(err)
 	}
 	if treeStat.Size() != cacheStat.Size() {
-		return Modified
+		// Modified file
+		fmt.Printf("M %s\n", cF.Path)
+		return
 	}
 	var chunkSize int64 = 4096
 	cacheBuffer := make([]byte, chunkSize)
@@ -99,9 +97,9 @@ func Diff(cF structs.CloudFile) DiffType {
 	diff, err := compareFiles(cacheReader, cacheBuffer, treeReader, treeBuffer)
 	utils.Handle(err)
 	if diff >= 0 {
-		return Modified
-	} else {
-		return Identical
+		// Modified file
+		fmt.Printf("M %s\n", cF.Path)
+		return
 	}
 }
 
