@@ -3,12 +3,14 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path"
 
 	commands "github.com/bamiesking/git-cloud/commands"
 	parser "github.com/bamiesking/git-cloud/parser"
+	"github.com/bamiesking/git-cloud/structs"
 	utils "github.com/bamiesking/git-cloud/utils"
 )
 
@@ -34,13 +36,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	var command func(structs.CloudFile)
 	switch os.Args[1] {
 	case "fetch":
 		fetch.Parse(os.Args[2:])
+		command = commands.Fetch
 	case "pull":
 		pull.Parse(os.Args[2:])
+		command = commands.Pull
 	case "diff":
 		diff.Parse(os.Args[2:])
+		command = commands.Diff
+	default:
+		fmt.Printf("git-cloud: '%s' is not a valid subcommand. See 'git cloud --help'\n", os.Args[1])
+		os.Exit(0)
 	}
 
 	// Read in the entries in .gitcloud
@@ -51,7 +60,7 @@ func main() {
 			log.Print(err)
 			continue
 		}
-		commands.Fetch(cF)
+		command(cF)
 	}
 
 	err = scanner.Err()
