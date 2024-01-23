@@ -14,12 +14,11 @@ import (
 	"github.com/bamiesking/git-cloud/utils"
 )
 
-func Fetch(cF structs.CloudFile) structs.CloudFileInfo {
+func Fetch(cF structs.CloudFile) {
 	switch cF.Service {
 	case structs.GDrive:
-		return gdrive.FetchGDrive(cF.Handle)
+		gdrive.FetchGDrive(cF.Handle)
 	}
-	return structs.CloudFileInfo{}
 }
 
 func Pull(cF structs.CloudFile) {
